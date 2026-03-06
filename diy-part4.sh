@@ -8,7 +8,7 @@
 #echo 'src-git QModem https://github.com/FUjr/QModem' >> feeds.conf.default
 
 # OpenClash
-git clone --depth 1 https://github.com/vernesong/OpenClash.git OpenClash
+#git clone --depth 1 https://github.com/vernesong/OpenClash.git OpenClash
 
 
 # temp

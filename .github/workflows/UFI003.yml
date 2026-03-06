@@ -1,7 +1,7 @@
 #
 #
 
-name: 2351_高通410系列UFI003,禁用Modem
+name: 2353_高通410系列UFI003,禁用Modem
 
 on:
   repository_dispatch:
@@ -238,7 +238,7 @@ jobs:
         retain_days: 0
         keep_minimum_runs: 5
     - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@v1.3
+      uses: dev-drprasad/delete-older-releases@master
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         keep_latest: 5

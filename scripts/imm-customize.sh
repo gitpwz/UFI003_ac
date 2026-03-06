@@ -12,3 +12,5 @@
 # sed -i 's/$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.//g' openwrt/package/emortal/default-settings/files/99-default-settings
 
 #3. Replace with JerryKuKu’s Argon
+chmod +x /etc/init.d/set_usb_role
+/etc/init.d/set_usb_role enable

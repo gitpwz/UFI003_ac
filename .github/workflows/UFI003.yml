@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest  
     steps:
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 
     - name: Show hardware info
       run: |
@@ -89,7 +89,7 @@ jobs:
         ln -sf /mnt/openwrt $GITHUB_WORKSPACE/openwrt
 
 
-    - name:  files
+    - name: Copy files
       run: cp -r files openwrt/files
 
     - name: Load custom feeds
@@ -106,7 +106,7 @@ jobs:
        
        ./scripts/feeds install -d y -p istore luci-app-store
         
-
+        
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
 
@@ -126,6 +126,13 @@ jobs:
       uses: csexton/debugger-action@master
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
       
+    - name: Clean build environment
+      run: |
+        cd openwrt
+        make dirclean
+        rm -rf ./tmp
+        echo "Build environment cleaned."
+        
     - name: Config defconfig
       id: config
       run: |
@@ -141,8 +148,9 @@ jobs:
         find dl -size -1024c -exec rm -f {} \;
 
     - name: 查看 openwrt 目录中的文件
-      run: ls -la openwrt/
-      
+      run: |
+       ls -la openwrt/
+       
            ls -l .config
       
            ls -la openwrt/.config
@@ -177,7 +185,7 @@ jobs:
       run: git config --global http.postBuffer 524288000
 
     - name: Upload bin directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -193,7 +201,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -212,31 +220,28 @@ jobs:
         echo "  默认密码:空" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@v2
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
+        prerelease: false
+        draft: false
 
-# 🔑 关键修复：全局授权
-permissions:
-  contents: write  # 必须！创建 release/tag 所需
-  actions: read    # 可选：允许读取 actions 数据
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build firmware (example)
-        run: echo "Build completed" > firmware.bin
-      
-      # 🔑 使用默认 GITHUB_TOKEN（自动注入）
-      - name: 🚀 Create GitHub Release
-        uses: softprops/action-gh-release@v1  # ⚠️ 永远不要用 @master！
-        with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: Release ${{ github.event.inputs.version }}
-          body: |
-            ## MSM8916 Firmware
-            - Built from branch: ${{ github.ref_name }}
-            - Build date: $(date +'%Y-%m-%d')
-          files: firmware.bin
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 使用 GitHub 自动提供的 token
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        retain_days: 0
+        keep_minimum_runs: 5
+    - name: Remove old Releases
+      uses: dev-drprasad/delete-older-releases@v1.3
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      with:
+        keep_latest: 5
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
